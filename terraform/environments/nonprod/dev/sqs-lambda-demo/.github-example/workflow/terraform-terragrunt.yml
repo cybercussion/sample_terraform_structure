@@ -1,0 +1,80 @@
+name: "Terraform Terragrunt Pipeline"
+
+on:
+  push:
+    branches:
+      - main  # Runs on main branch pushes
+  pull_request:
+    branches:
+      - main  # Runs on PRs for validation & plan
+
+permissions:
+  id-token: write  # Required for AWS OIDC auth
+  contents: read
+
+env:
+  TF_WORKING_DIR: "terraform/environments/nonprod/dev/sqs-lambda-demo"
+  TG_VERSION: "0.53.3"
+
+jobs:
+  validate:
+    name: "Terraform Validate"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Terraform & Terragrunt
+        run: |
+          curl -L https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64 \
+          -o /usr/local/bin/terragrunt && chmod +x /usr/local/bin/terragrunt
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terragrunt run-all validate
+
+  plan:
+    name: "Terraform Plan"
+    runs-on: ubuntu-latest
+    needs: validate  # Runs only if validate succeeds
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Terraform & Terragrunt
+        run: |
+          curl -L https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64 \
+          -o /usr/local/bin/terragrunt && chmod +x /usr/local/bin/terragrunt
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terragrunt run-all plan -out=tfplan
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.TF_WORKING_DIR }}/tfplan
+
+  apply:
+    name: "Terraform Apply"
+    runs-on: ubuntu-latest
+    needs: plan  # Runs only if plan succeeds
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.TF_WORKING_DIR }}
+
+      - name: Manual Approval
+        uses: hmarr/auto-approve-action@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terragrunt run-all apply "tfplan"

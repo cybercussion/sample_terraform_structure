@@ -1,0 +1,75 @@
+pipeline {
+    agent {
+        docker {
+            image 'hashicorp/terraform:1.5.7'
+        }
+    }
+    
+    environment {
+        TF_WORKING_DIR = 'terraform/environments/nonprod/dev/sqs-lambda-demo'
+        TG_VERSION = "0.53.3"
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')  // Prevent hanging jobs
+        ansiColor('xterm')  // Enable colored console output
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Terragrunt') {
+            steps {
+                sh '''
+                curl -L https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64 \
+                -o /usr/local/bin/terragrunt && chmod +x /usr/local/bin/terragrunt
+                '''
+            }
+        }
+
+        stage('Validate Terraform & Terragrunt') {
+            steps {
+                dir("${TF_WORKING_DIR}") {
+                    sh 'terragrunt run-all validate'
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                dir("${TF_WORKING_DIR}") {
+                    sh 'terragrunt run-all plan -out=tfplan'
+                }
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'terraform.tfstate, tfplan', fingerprint: true
+                }
+            }
+        }
+
+        stage('Manual Approval Before Apply') {
+            steps {
+                input message: "Approve Terraform Apply?", ok: "Apply"
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                dir("${TF_WORKING_DIR}") {
+                    sh 'terragrunt run-all apply "tfplan"'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()  // Clean up workspace after job completion
+        }
+    }
+}

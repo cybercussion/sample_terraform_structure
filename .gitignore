@@ -1,0 +1,43 @@
+.vscode/settings.json
+# Terraform and Terragrunt
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+
+# Ignore override files as they are usually local-only configuration
+*.tfvars
+*.tfvars.json
+
+# Ignore generated plan files
+*.tfplan
+
+# Ignore .terraform directories
+.terraform/
+.terraform.lock.hcl
+
+# Ignore Terragrunt cache files
+.terragrunt-cache/
+
+# Ignore sensitive files (if any)
+.env
+secrets.auto.tfvars
+
+# Ignore temporary Terragrunt debug logs
+terragrunt-debug.tfvars.json
+
+# Ignore command-specific outputs
+*.out
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*.swp

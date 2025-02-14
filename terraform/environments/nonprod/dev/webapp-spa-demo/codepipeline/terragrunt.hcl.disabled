@@ -1,0 +1,94 @@
+# This is a disabled attempt at making AWS CodePipeline take a branch parameter so it was more "cool".
+# Note: They now allow a Github Action or Gitlab Runner in CodeBuild which would make this much better.
+# This was the worst way I've seen to established pipelines but sometimes you don't get to choose your
+# CI/CD system.
+
+include {
+  path = find_in_parent_folders("root.hcl")
+}
+
+terraform {
+  source = "../../../../../modules/codepipeline-frontend" # Path to the CodePipeline module
+}
+
+# Dependency on the s3_cloudfront module
+dependency "s3_cloudfront" {
+  config_path = "../s3_cloudfront"
+
+  # Merge mock outputs with the actual state to avoid errors during validation or planning
+  mock_outputs_merge_with_state = true
+
+  # Define mock outputs for commands that might fail without them
+  mock_outputs = {
+    s3_bucket_name      = "mock-s3-bucket"
+    cloudfront_endpoint = "mock.cloudfront.net"
+    cloudfront_id       = "mock-cloudfront-id"
+  }
+}
+
+inputs = {
+  # General pipeline settings
+  pipeline_name      = "name-of-app-pipeline"
+  artifact_bucket    = "nonprod-artifacts-bucket"
+  github_connection_arn = "arn:aws:codestar-connections:us-west-2:123456789012:connection/abcde12345"
+  repository_name    = "your-org/name-of-app"
+
+  # Use outputs from the s3_cloudfront dependency
+  deploy_s3_bucket    = dependency.s3_cloudfront.outputs.s3_bucket_name
+  cloudfront_distribution_id = dependency.s3_cloudfront.outputs.cloudfront_id
+
+  # Build stages configuration
+  build_stages = {
+    "lint" = {
+      enabled         = true
+      buildspec       = "cicd/buildspecs/lint.yml"
+      compute_type    = "BUILD_GENERAL1_SMALL"
+      build_image     = "aws/codebuild/standard:7.0"
+      node_env        = "lint"
+      category        = "Test"
+      input_artifacts = ["SourceOutput"]
+      output_artifacts = ["LintOutput"]
+      manual          = false
+    },
+    "test" = {
+      enabled         = true
+      buildspec       = "cicd/buildspecs/test.yml"
+      compute_type    = "BUILD_GENERAL1_SMALL"
+      build_image     = "aws/codebuild/standard:7.0"
+      node_env        = "test"
+      category        = "Test"
+      input_artifacts = ["SourceOutput"]
+      output_artifacts = ["TestOutput"]
+      manual          = false
+    },
+    "build" = {
+      enabled         = true
+      buildspec       = "cicd/buildspecs/build.yml"
+      compute_type    = "BUILD_GENERAL1_SMALL"
+      build_image     = "aws/codebuild/standard:7.0"
+      node_env        = "build"
+      category        = "Build"
+      input_artifacts = ["SourceOutput"]
+      output_artifacts = ["BuildOutput"]
+      manual          = false
+    },
+    "deploy" = {
+      enabled         = false
+      buildspec       = "cicd/buildspecs/deploy.yml"
+      compute_type    = "BUILD_GENERAL1_SMALL"
+      build_image     = "aws/codebuild/standard:7.0"
+      node_env        = "deploy"
+      category        = "Deploy"
+      input_artifacts = ["BuildOutput"]
+      output_artifacts = []
+      manual          = true
+    }
+  }
+
+  # Branch-specific configuration
+  branches = [
+    { branch_name = "develop", env = "dev",   node_env = "dev",   manual = false },
+    { branch_name = "release", env = "stage", node_env = "stage", manual = true  },
+    { branch_name = "release", env = "perf",  node_env = "perf",  manual = true  }
+  ]
+}

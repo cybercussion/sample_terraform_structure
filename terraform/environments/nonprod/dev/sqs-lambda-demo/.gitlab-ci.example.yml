@@ -1,0 +1,56 @@
+# .gitlab-ci.yml for Terraform/Terragrunt pipeline
+
+stages:
+  - validate
+  - plan
+  - apply
+
+variables:
+  TF_VERSION: "1.5.7"  # Specify Terraform version
+  TG_VERSION: "0.53.3"  # Specify Terragrunt version
+  TF_WORKING_DIR: "terraform/environments/nonprod/dev/sqs-lambda-demo"
+
+cache:
+  key: terraform
+  paths:
+    - .terraform
+    - .terragrunt-cache
+
+before_script:
+  - terraform --version
+  - terragrunt --version
+  - cd $TF_WORKING_DIR  # Move into the correct environment directory
+
+# 🛠 Stage 1: Validate Terraform & Terragrunt configurations
+validate:
+  image: hashicorp/terraform:${TF_VERSION}
+  stage: validate
+  script:
+    - terragrunt run-all validate
+  only:
+    - main  # Runs only on the main branch
+
+# 🔍 Stage 2: Plan Terraform Execution (Requires Manual Approval Before Apply)
+plan:
+  image: hashicorp/terraform:${TF_VERSION}
+  stage: plan
+  script:
+    - terragrunt run-all plan -out=tfplan
+  artifacts:
+    paths:
+      - terraform.tfstate
+      - tfplan
+  only:
+    - main
+
+# 🚀 Stage 3: Apply Terraform Changes (Manual Approval Required)
+apply:
+  image: hashicorp/terraform:${TF_VERSION}
+  stage: apply
+  script:
+    - terragrunt run-all apply "tfplan"
+  dependencies:
+    - plan  # Ensure we only apply if the plan was successful
+  when: manual  # Requires manual approval before applying
+  only:
+    - main

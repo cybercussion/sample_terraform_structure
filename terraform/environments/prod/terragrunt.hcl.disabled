@@ -1,0 +1,42 @@
+locals {
+  # Detect if running in CI
+  is_ci = length(get_env("CI", "")) > 0
+
+  # Specify the expected account ID for this environment
+  expected_account_id = "1234567890"
+
+  # Resolve the AWS profile dynamically for local execution
+  aws_profile = local.is_ci ? null : run_cmd("bash ../find_profile_by_account_id.sh ${local.expected_account_id}")
+
+  # Ensure the SSO session is valid for local execution
+  sso_login_status = local.is_ci ? null : run_cmd("aws sso login --profile ${local.aws_profile}")
+
+  # Get the actual account ID
+  actual_account_id = local.is_ci
+    ? run_cmd("aws sts get-caller-identity --query Account --output text")
+    : run_cmd("aws sts get-caller-identity --profile ${local.aws_profile} --query Account --output text")
+
+  # Check if the actual account ID matches the expected account ID
+  is_valid_account = local.actual_account_id == local.expected_account_id
+
+  # Role to assume in CI/CD
+  role_arn = local.is_ci ? "arn:aws:iam::${local.expected_account_id}:role/CIRole" : null
+}
+
+provider "aws" {
+  region = "us-east-1"
+
+  # Use assume_role for CI/CD
+  assume_role {
+    role_arn     = local.role_arn
+    session_name = "ci-session"
+  }
+
+  # Use the resolved profile for local execution
+  profile = local.is_ci ? null : local.aws_profile
+}
+
+before_hook "validate_account" {
+  commands = ["apply", "plan", "destroy"]
+  execute  = ["bash", "-c", "if [ ${local.is_valid_account} != true ]; then echo 'ERROR: Wrong AWS account detected!' && exit 1; fi"]
+}
