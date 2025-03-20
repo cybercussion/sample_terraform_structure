@@ -119,4 +119,5 @@ inputs = {
     # Basic execution role for both Lambdas
     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
   ]
+  tags = local.common.tags
 }

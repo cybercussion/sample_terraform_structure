@@ -54,6 +54,7 @@ variable "enable_http" {
 
 variable "ssl_policy" {
   description = "The SSL policy for the ALB listener"
+  type        = string
   default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
 }
 

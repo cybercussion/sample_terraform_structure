@@ -1,8 +1,9 @@
 terraform {
+  required_version = ">= 1.5.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.0.0"
+      version = ">= 5.88.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -51,9 +52,21 @@ data "aws_caller_identity" "current" {}
 # EKS Cluster Module
 module "eks" {
   source          = "terraform-aws-modules/eks/aws"
-  version         = "20.33.0"
+  version         = "20.33.1"
   cluster_name    = var.cluster_name
   cluster_version = var.cluster_version
+
+  # Ensure nodes can only communicate within VPC
+  node_security_group_additional_rules = {
+    egress_private = {
+      description = "Allow egress only within VPC"
+      type        = "egress"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = [data.aws_ssm_parameter.vpc_id.value] # Restrict to your actual VPC CIDR
+    }
+  }
 
   # Authentication configuration
   authentication_mode = "API_AND_CONFIG_MAP"

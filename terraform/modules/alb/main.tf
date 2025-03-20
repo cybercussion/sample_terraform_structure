@@ -1,8 +1,9 @@
 terraform {
+  required_version = ">= 1.5.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.0.0"
+      version = ">= 5.88.0"
     }
   }
 
@@ -26,7 +27,7 @@ data "aws_ssm_parameter" "subnets" {
 
 # Security Group for ALB
 resource "aws_security_group" "alb" {
-  name_prefix = "${var.environment}-fargate-alb"
+  name_prefix = var.name
   description = "Security group for ALB"
   vpc_id      = data.aws_ssm_parameter.vpc_id.value
 
@@ -37,6 +38,7 @@ resource "aws_security_group" "alb" {
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    #cidr_blocks = [data.aws_ssm_parameter.vpc_id.value]  # Restrict to your VPC CIDR
     description = "Allow HTTP or allow for HTTP to HTTPS redirection"
   }
 
@@ -58,16 +60,19 @@ resource "aws_security_group" "alb" {
 # Application Load Balancer
 resource "aws_lb" "this" {
   name               = "${var.environment}-fargate-alb"
-  internal           = false
+  internal           = var.scheme == "internal" ? true : false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
+  #security_groups    = [aws_security_group.alb.id]
+  security_groups    = length(var.security_group_ids) > 0 ? var.security_group_ids : [aws_security_group.alb.id]
   subnets            = [for ssm in data.aws_ssm_parameter.subnets : ssm.value]
 
   enable_deletion_protection = false
 
-  tags = {
+  idle_timeout = var.idle_timeout
+
+  tags = merge(var.tags, {
     Environment = var.environment
-  }
+  })
 }
 
 # Fetch Certificate ARN from SSM
@@ -136,7 +141,7 @@ resource "aws_lb_listener" "https" {
 # Test Listener (Optional)
 resource "aws_lb_listener" "test" {
   load_balancer_arn = aws_lb.this.arn
-  port              = 9001
+  port              = var.test_listener_port
   protocol          = "HTTP"
 
   default_action {

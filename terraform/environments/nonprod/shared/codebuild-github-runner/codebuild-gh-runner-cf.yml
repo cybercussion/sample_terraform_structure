@@ -1,0 +1,202 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Github Action Codebuild Runner Test
+
+# aws cloudformation create-stack --stack-name name-of-stack-gh-runner \
+# --template-body file://path/to/your-template-file.yaml \
+# --parameters ParameterKey=AppName,ParameterValue=name-of-app \
+#              ParameterKey=GithubRepoOwner,ParameterValue=Organization \
+#              ParameterKey=GithubRepo,ParameterValue=name-of-repo \
+#              ParameterKey=CodeBuildImage,ParameterValue=aws/codebuild/standard:7.0 \
+#              ParameterKey=CodeBuildEnvironmentComputeType,ParameterValue=BUILD_GENERAL1_SMALL \
+# --capabilities CAPABILITY_NAMED_IAM
+
+# Integration with Github Repo (note this should happen automatically pending permission issues.)
+# Navigate to Github Repo->Settings->Webhooks https://github.com/Organization/repo-name/settings/hooks
+# IF codestar connection is available, and you got the ARN to stick via this setup the webhook should
+# automatically be added to the github repo.
+# Still need to understand scenarios where multiple github repos would need to potentially trigger the
+# same Github Runner as you'd have to setup permissions to perform those tasks or divide CodeBuilds up
+# for particular tasks like front ends, services, or other provisions.
+
+Parameters:
+  AppName:
+    Type: String
+    Default: "name-of-app"
+
+  GithubRepoOwner:
+    Type: String
+    Default: "Organization"
+
+  GithubRepo:
+    Type: String
+    Default: "name-of-repo"
+
+  CodeBuildImage:
+    Type: String
+    Default: "aws/codebuild/standard:7.0"
+
+  CodeBuildEnvironmentComputeType:
+    Type: String
+    Default: BUILD_GENERAL1_SMALL
+    AllowedValues:
+      - BUILD_GENERAL1_SMALL
+      - BUILD_GENERAL1_MEDIUM
+      - BUILD_GENERAL1_LARGE
+
+Resources:
+  # S3 Bucket for build artifacts (Consider moving to one bucket to rule them all)
+  # BuildArtifactBucket:
+  #   Type: AWS::S3::Bucket
+  #   Properties:
+  #     VersioningConfiguration:
+  #       Status: Enabled
+  #     LifecycleConfiguration:
+  #       Rules:
+  #         - Id: ExpireOldArtifacts
+  #           Prefix: "codebuild/artifacts/" # Matches the path where artifacts are stored
+  #           Status: Enabled
+  #           ExpirationInDays: 90 # Delete objects after 30 days
+  #         - Id: TransitionToIA
+  #           Prefix: "codebuild/artifacts/"
+  #           Status: Enabled
+  #           Transitions:
+  #             - TransitionInDays: 14
+  #               StorageClass: STANDARD_IA
+  #   DeletionPolicy: Delete
+
+  # IAM Role for CodeBuild with GitHub Actions Runner Permissions
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CodeBuildGitHubRunnerRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: codebuild.amazonaws.com
+      Policies:
+        - PolicyName: CodeBuildGitHubRunner
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - codebuild:ListBuilds
+                  - codebuild:BatchGetProjects
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - codestar-connections:UseConnection
+                  - codestar-connections:GetConnection
+                  - codestar-connections:GetConnectionToken
+                  - codeconnections:GetConnection
+                  - codeconnections:GetConnectionToken
+                Resource:
+                  - '{{resolve:ssm:/github/connection/arn}}'
+                  - !Sub "arn:${AWS::Partition}:codestar-connections:*:*:connection/"
+                  - !Sub "arn:${AWS::Partition}:codeconnections:*:*:connection/"
+
+              - Effect: Allow
+                Action:
+                  - codebuild:CreateWebhook
+                  - codebuild:UpdateWebhook
+                  - codebuild:DeleteWebhook
+                Resource: !Sub "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/*"
+
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
+
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                Resource: !Sub "arn:${AWS::Partition}:s3:::codepipeline-${AWS::Region}-*"
+
+              - Effect: Allow
+                Action:
+                  - codebuild:CreateReportGroup
+                  - codebuild:CreateReport
+                  - codebuild:UpdateReport
+                  - codebuild:BatchPutTestCases
+                  - codebuild:BatchPutCodeCoverages
+                Resource: !Sub "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/*"
+
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CodeBuildGitHubRunnerRole"
+                Condition:
+                  StringEqualsIfExists:
+                    "iam:PassedToService": "codebuild.amazonaws.com"
+
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/creds/*"
+              # Add other permissions needed by Github Actions to perform its tasks in AWS.
+
+  # CodeBuild Project for GitHub Actions Runner
+  
+  GitHubActionsRunner:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref AppName
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Cache:
+        Type: NO_CACHE
+      TimeoutInMinutes: 60
+      QueuedTimeoutInMinutes: 480
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+        S3Logs:
+          Status: DISABLED
+      Visibility: PRIVATE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: !Ref CodeBuildEnvironmentComputeType
+        Image: !Ref CodeBuildImage
+      Source:
+        Type: GITHUB
+        Location: !Sub "https://github.com/${GithubRepoOwner}/${GithubRepo}"
+        GitCloneDepth: 1
+        BuildSpec: |
+          version: 0.2
+          phases:
+            build:
+              commands:
+                - echo "Github Runner"
+        # This may or may not work, I can't find a equiv in Terraform.  Workaround done to main.tf
+        Auth:
+          Type: CODESTAR_CONNECTIONS
+          Resource: '{{resolve:ssm:/github/connection/arn}}' 
+      Triggers:
+        Webhook: true
+        ScopeConfiguration:
+          Name: !Ref GithubRepoOwner
+        FilterGroups:
+          - - Type: EVENT
+              Pattern: WORKFLOW_JOB_QUEUED
+            - Type: WORKFLOW_NAME
+              Pattern: \[CI-CodeBuild\]
+
+Outputs:
+  CodeBuildRunnerProject:
+    Description: "AWS CodeBuild project running GitHub Actions"
+    Value: !Ref GitHubActionsRunner

@@ -11,11 +11,11 @@ locals {
   environment           = "dev"
   # Map of placeholder images by port
   placeholder_tag       = "latest"
-  placeholder_images = {
-    "80"    = "nginx:latest"
-    "3000"  = "node:20-alpine"
+  placeholder_images    = {
+    "80"   = "nginx:latest"      # Default web server
+    "3000" = "node:20-alpine"    # Node.js
     "5000"  = "python:3.11-alpine"
-    "8080"  = "openjdk:17-jre"
+    "8080" = "openjdk:11-jre"    # Java/Spring Boot
     "8501"  = "python:3.11-alpine"
     "9000"  = "php:8.2-apache"
   }

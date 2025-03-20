@@ -27,3 +27,20 @@ variable "ssm_domain_param" {
   type        = string
   default     = "/network/domain"
 }
+
+variable "cache_behaviors" {
+  description = "Optional list of additional cache behaviors with Cache-Control headers."
+  type = list(object({
+    path_pattern    = string
+    allowed_methods = list(string)
+    cached_methods  = list(string)
+    compress        = bool
+    cache_control   = string
+    forwarded_values = object({
+      query_string = bool
+      cookies      = object({ forward = string })
+    })
+    viewer_protocol_policy = string
+  }))
+  default = []
+}

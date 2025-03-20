@@ -45,8 +45,8 @@ variable "scale_out_cooldown" {
   type        = number
 }
 
-variable "tags" {
-  description = "Tags for resources"
-  type        = map(string)
-  default     = {}
-}
+# variable "tags" {
+#   description = "Tags for resources"
+#   type        = map(string)
+#   default     = {}
+# }

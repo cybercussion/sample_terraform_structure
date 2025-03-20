@@ -92,4 +92,5 @@ inputs = {
   managed_policies = [
     "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
   ]
+  tags = local.common.tags
 }

@@ -1,33 +1,21 @@
 terraform {
+  required_version = ">= 1.5.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.0.0"
+      version = ">= 5.88.0"
     }
   }
 
   backend "s3" {}
 }
 
-# data "aws_region" "current" {}
-
-# data "aws_caller_identity" "current" {}
-
 resource "aws_iam_role" "this" {
-  name               = var.role_name
-  assume_role_policy = var.assume_role_policy != "" ? var.assume_role_policy : jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "sts:AssumeRole",
-        Effect = "Allow",
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      }
-    ]
-  })
-  force_detach_policies = true 
+  name                  = var.role_name
+  assume_role_policy    = var.assume_role_policy
+  force_detach_policies = true
+  # max_session_duration = 3600
+  tags                  = var.tags
 }
 
 resource "aws_iam_role_policy" "inline_policies" {

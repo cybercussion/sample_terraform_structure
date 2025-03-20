@@ -1,8 +1,9 @@
 terraform {
+  required_version = ">= 1.5.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.0.0" # Or use a specific compatible version like 5.76.0
+      version = ">= 5.88.0" # Or use a specific compatible version like 5.76.0
     }
   }
 
@@ -106,6 +107,29 @@ resource "aws_cloudfront_distribution" "cf_distribution" {
     }
 
     viewer_protocol_policy = "redirect-to-https"
+  }
+
+  dynamic "ordered_cache_behavior" {
+    for_each = var.cache_behaviors
+    content {
+      path_pattern     = ordered_cache_behavior.value.path_pattern
+      allowed_methods  = ordered_cache_behavior.value.allowed_methods
+      cached_methods   = ordered_cache_behavior.value.cached_methods
+      compress         = ordered_cache_behavior.value.compress
+      target_origin_id = "S3Origin"
+
+      forwarded_values {
+        query_string = ordered_cache_behavior.value.forwarded_values.query_string
+        cookies {
+          forward = ordered_cache_behavior.value.forwarded_values.cookies.forward
+        }
+      }
+
+      viewer_protocol_policy = ordered_cache_behavior.value.viewer_protocol_policy
+
+      # Set Cache-Control using Response Headers Policy
+      response_headers_policy_id = aws_cloudfront_response_headers_policy.cache_control[ordered_cache_behavior.key].id
+    }
   }
 
   custom_error_response {
