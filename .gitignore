@@ -41,3 +41,9 @@ Desktop.ini
 
 # Linux
 *.swp
+
+#Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

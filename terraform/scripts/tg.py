@@ -1,11 +1,33 @@
 #!/usr/bin/env python3
 
+"""
+tg.py - Terragrunt wrapper script
+
+Author: Mark Statkus
+Description:
+    Interactive or CLI-driven Terragrunt runner for managing Terraform modules
+    across multiple AWS accounts and environments.
+
+Usage (CLI):
+    python tg.py -a nonprod -e dev -f rds -c plan
+
+Usage (Wizard):
+    python tg.py  # Guided prompt mode
+
+Requirements:
+    - Python 3.6+
+    - terragrunt and terraform in PATH
+    - questionary (auto-installed if missing)
+"""
+
 import os
 import argparse
 import shutil
 import subprocess
 from pathlib import Path
 import sys
+from utils.aws_profile import find_profile_by_account
+from utils.aws_auth import ensure_aws_profile
 try:
   import questionary
   from questionary import Choice
@@ -96,9 +118,22 @@ def choose_stack():
 
     return env_path / stack
 
+def can_use_default_aws_profile():
+  try:
+    subprocess.run(
+      ["aws", "sts", "get-caller-identity"],
+      stdout=subprocess.DEVNULL,
+      stderr=subprocess.DEVNULL,
+      check=True
+    )
+    return True
+  except subprocess.CalledProcessError:
+    return False
+
 def main():
   used_wizard = False
   check_tools_installed()
+
   parser = argparse.ArgumentParser()
   parser.add_argument("-a", "--account", required=False, help="Account (e.g., nonprod, prod)")
   parser.add_argument("-e", "--env", required=False, help="Environment (e.g., dev, staging)")
@@ -166,6 +201,9 @@ def main():
       ).ask()
     else:
       args.non_interactive = False
+
+  # Check if AWS_PROFILE is set, if not, try to find it, if CI=true, skip
+  ensure_aws_profile(args.account)
 
   # Run the command with args
   run_terragrunt(
