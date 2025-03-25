@@ -21,6 +21,8 @@ Quick way to access terraform/terragrunt commands without needing to `cd` into d
 
 ## SQS Lambda Demo
 
+Sample Long running task:  REST endpoint for adding a task.  A Runner picks it up out of SQS processes it.
+
 ```shell
 python terraform/scripts/tg.py -a nonprod -e dev -f sqs-lambda-demo -c plan --run-all
 
@@ -42,6 +44,8 @@ Group 4
 ```
 
 ## ECS Fargate Demo
+
+Sample serverless setup for docker containers on fractional compute/memory with autoscaling, scheduling.
 
 ```shell
 python terraform/scripts/tg.py -a nonprod -e dev -f ecs-fargate-demo -c plan --run-all;
@@ -96,17 +100,17 @@ Group 2
 python terraform/scripts/tg.py -a nonprod -e shared -f rds -c plan --run-all
 ```
 
-### CodeBuild Github Runner
+### AWS CodeBuild Github Runner
 
-AWS now allows you to run a CodeBuild runner to execute Github Actions in AWS.
+AWS now allows you to run a CodeBuild runner to execute Github Actions in AWS.  Works via webhook back to your Github
 
 ```shell
 python terraform/scripts/tg.py -a nonprod -e shared -f codebuild-github-runner -c plan --run-all
 ```
 
-### Codebuild Gitlab Runner
+### AWS Codebuild Gitlab Runner
 
-AWS now allows you to run a CodeBuild runner to execute Github Actions in AWS.
+AWS now allows you to run a CodeBuild runner to execute Github Actions in AWS.  Works via webhook back to your Gitlab.
 
 ```shell
 python terraform/scripts/tg.py -a nonprod -e shared -f codebuild-gitlab-runner -c plan --run-all
