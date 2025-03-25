@@ -6,15 +6,18 @@ Quick way to access terraform/terragrunt commands without needing to `cd` into d
 
 `python terraform/scripts/<file.py> -a <account> -e <environment> -f <folder> -c <command> [--run-all] [--dry-run] [--log-level <level>]`
 
-| Flag               | Description                                        | Example                     |
-|--------------------|----------------------------------------------------|-----------------------------|
-| `-a` / `--account` | Target account (e.g., `nonprod`, `prod`)           | `-a nonprod`                |
-| `-e` / `--env`     | Target environment folder                          | `-e dev`                    |
-| `-f` / `--folder`  | Optional: Specific module/folder inside env        | `-f sqs-lambda-demo`        |
-| `-c` / `--command` | Terraform command (`init`, `plan`, `apply`, `destroy`)| `-c plan`                |
-| `--run-all`        | Use `terragrunt run-all` instead of single run     | `--run-all`                 |
-| `--dry-run`        | Show what would run, but don't execute             | `--dry-run`                 |
-| `--log-level`      | Log level (`info`, `debug`, `trace`, `warn`, `error`)| `--log-level error`       |
+| Flag                  | Description                                                     | Example                         |
+|-----------------------|-----------------------------------------------------------------|---------------------------------|
+| `-a` / `--account`    | Target account (e.g., `nonprod`, `prod`)                        | `-a nonprod`                    |
+| `-e` / `--env`        | Target environment folder                                       | `-e dev`                        |
+| `-f` / `--folder`     | Optional: Specific module/folder inside env                     | `-f sqs-lambda-demo`            |
+| `-c` / `--command`    | Terraform command (`init`, `plan`, `apply`, `destroy`, etc)     | `-c plan`                       |
+| `--run-all`           | Use `terragrunt run-all` instead of a single module run         | `--run-all`                     |
+| `--non-interactive`   | Run Terragrunt in non-interactive mode (useful for automation)  | `--non-interactive`             |
+| `--parallelism`       | Max number of modules to process in parallel with run-all       | `--parallelism 4`               |
+| `--dry-run`           | Show what would be executed, but don’t actually run anything    | `--dry-run`                     |
+| `--log-level`         | Terragrunt log verbosity (`trace`, `debug`, `info`, `warn`, `error`) | `--log-level error`        |
+| `--extra-args`        | Additional arguments passed directly to Terragrunt              | `--extra-args -lock=false`      |
 
 ## SQS Lambda Demo
 
