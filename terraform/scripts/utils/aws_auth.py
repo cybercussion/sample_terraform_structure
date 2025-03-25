@@ -18,6 +18,20 @@ def can_use_default_aws_profile(account_id: str) -> bool:
     return identity.get("Account") == account_id
   except Exception:
       return False
+    
+def get_account_id_from_profile(profile_name: str) -> str:
+    try:
+        result = subprocess.run(
+            ["aws", "sts", "get-caller-identity", "--profile", profile_name, "--output", "json"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True
+        )
+        import json
+        return json.loads(result.stdout).get("Account")
+    except Exception:
+        return None
 
 def ensure_aws_profile(account_folder: str):
   if os.getenv("CI", "").lower() == "true":
@@ -41,7 +55,9 @@ def ensure_aws_profile(account_folder: str):
 
   # Step 2: If no account ID, just try using default creds and hope for the best
   if not account_id:
-    print("⚠️  No account ID found. Using default AWS credentials (hope they're valid).")
+    default_cred_account_id = get_account_id_from_profile('default') 
+    print(f"⚠️  No account ID found in path or account_id.txt.")
+    print(f"ℹ️  Using default AWS credentials, which appear to belong to account: {default_cred_account_id}")
     return
 
   # Step 3: Check if default creds match the expected account
