@@ -33,7 +33,7 @@ def run_terragrunt(path, command, run_all, non_interactive, parallelism, dry_run
     cmd.append(f"--terragrunt-log-level={log_level}")
 
   if extra_args:
-    cmd.extend(extra_args)
+    cmd.extend([arg for arg in extra_args if arg.strip()])
 
   print(f"\n👉 Running: {' '.join(cmd)} in {path}")
 
