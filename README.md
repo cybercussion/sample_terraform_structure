@@ -7,7 +7,7 @@ This is not meant to directly be a huge mono repo for DevOps but could also be b
 
 ### For MacOS Terminal or iTerm2
 
-Consider instaling https://brew.sh
+Consider installing https://brew.sh
 
 `brew install asdf`
 
@@ -39,6 +39,8 @@ Set any and lower level settings in subdirectories `terragrunt.hcl` files.
 - `terragrunt run-all apply`
 - `terragrunt run-all destroy`
 - `terragrunt validate-inputs`
+
+For Python wrapper please see `terraform/scripts/README.md`
 
 ## What are Terraform Modules
 
