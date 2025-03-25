@@ -99,7 +99,7 @@ Group 2
 - Module ./route53
 ```
 
-## Shared
+## Shared (multi-env resources at account)
 
 ### RDS
 
