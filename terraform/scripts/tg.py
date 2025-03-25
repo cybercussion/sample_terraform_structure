@@ -7,14 +7,14 @@ import subprocess
 from pathlib import Path
 import sys
 try:
-    import questionary
-    from questionary import Choice
+  import questionary
+  from questionary import Choice
 except ImportError:
-    print("📦 Installing 'questionary'...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary"])
-    import questionary
-    from questionary import Choice
-    
+  print("📦 Installing 'questionary'...")
+  subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary"])
+  import questionary
+  from questionary import Choice
+
 IGNORED = {"templates", "__pycache__", ".DS_Store", "README.md", "artifacts"}
 
 def run_terragrunt(path, command, run_all, non_interactive, parallelism, dry_run=False, log_level="info", extra_args=None):
@@ -23,33 +23,37 @@ def run_terragrunt(path, command, run_all, non_interactive, parallelism, dry_run
     cmd.append("--terragrunt-non-interactive")
   if parallelism:
     cmd.append(f"--terragrunt-parallelism={parallelism}")
-  
+
   if run_all:
     cmd += ["run-all", command]
   else:
     cmd += [command]
-    
+
   if log_level:
     cmd.append(f"--terragrunt-log-level={log_level}")
-    
+
   if extra_args:
     cmd.extend(extra_args)
 
   print(f"\n👉 Running: {' '.join(cmd)} in {path}")
-  
+
   if dry_run:
     print(f"🧪 Dry run: Would execute '{' '.join(cmd)}' in {path}")
     return
-  
-  subprocess.run(cmd, cwd=path, check=True)
-    
+
+  try:
+    subprocess.run(cmd, cwd=path, check=True)
+  except subprocess.CalledProcessError as e:
+    print(f"❌ Terragrunt command failed with exit code {e.returncode}")
+    sys.exit(e.returncode)
+
 def check_tools_installed():
   errors = []
   if not shutil.which("terragrunt"):
     errors.append("❌ Error: 'terragrunt' is not installed or not found in PATH.")
   if not shutil.which("terraform"):
     errors.append("❌ Error: 'terraform' is not installed or not found in PATH.")
-  
+
   if errors:
     for error in errors:
       print(error)
@@ -83,8 +87,8 @@ def choose_stack():
       )
     ])
     if not stacks:
-        print(f"❌ No valid stacks found in {account}/{env}")
-        return None
+      print(f"❌ No valid stacks found in {account}/{env}")
+      return None
 
     stack = questionary.select("Select a stack/module:", choices=stacks).ask()
     if not stack:
@@ -108,35 +112,46 @@ def main():
   parser.add_argument("--extra-args", nargs="*", help="Additional arguments to pass to terragrunt")
   args = parser.parse_args()
   
+  # Check if args missing, go into wizard mode
   if not args.account or not args.env:
     print("🔍 Launching interactive stack selector...\n")
     selected_path = choose_stack()
     if not selected_path:
-        sys.exit(1)
+      sys.exit(1)
 
     # Extract account/env/folder from selected path
     args.account = selected_path.parents[2].name
     args.env = selected_path.parents[1].name
     args.folder = selected_path.name
 
-    path = selected_path  # ✅ Use the full resolved path
+    path = selected_path
     used_wizard = True
   else:
-      base_path = Path(__file__).resolve().parent.parent
-      path = base_path / "environments" / args.account / args.env
-      if args.folder:
-          path = path / args.folder
+    base_path = Path(__file__).resolve().parent.parent
+    path = base_path / "environments" / args.account / args.env
+    if args.folder:
+      path = path / args.folder
 
+  # Check if path exists
   if not path.exists():
     print(f"❌ Error: Path does not exist: {path}")
     sys.exit(1)
-    
+
+  # Command selection
   if not args.command:
     args.command = questionary.select(
       "Choose a Terraform command to run:",
       choices=["init", "validate", "plan", "apply", "destroy"]
     ).ask()
-  
+
+  if not args.command:
+    print("❌ Error: No command selected.")
+    sys.exit(1)
+
+  if args.parallelism is not None and args.parallelism <= 0:
+    print("❌ Error: Parallelism must be a positive integer.")
+    sys.exit(1)
+
   # Check if CI=true, then set non-interactive mode
   if os.getenv("CI", "").lower() == "true":
     args.non_interactive = True
@@ -150,8 +165,9 @@ def main():
         ]
       ).ask()
     else:
-        args.non_interactive = False
+      args.non_interactive = False
 
+  # Run the command with args
   run_terragrunt(
     path,
     args.command,
