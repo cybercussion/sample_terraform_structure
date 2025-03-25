@@ -186,6 +186,16 @@ def main():
   if args.parallelism is not None and args.parallelism <= 0:
     print("❌ Error: Parallelism must be a positive integer.")
     sys.exit(1)
+    
+  # Auto-enable --run-all if wrapper module (no terragrunt.hcl, but submodules exist)
+  if not (path / "terragrunt.hcl").exists():
+    has_child_modules = any(
+      (path / child).is_dir() and (path / child / "terragrunt.hcl").exists()
+      for child in os.listdir(path)
+    )
+    if has_child_modules:
+      print("ℹ️  Auto-detected wrapper module. Enabling --run-all.")
+      args.run_all = True
 
   # Check if CI=true, then set non-interactive mode
   if os.getenv("CI", "").lower() == "true":

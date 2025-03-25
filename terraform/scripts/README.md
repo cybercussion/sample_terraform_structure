@@ -19,12 +19,16 @@ Quick way to access terraform/terragrunt commands without needing to `cd` into d
 | `--log-level`         | Terragrunt log verbosity (`trace`, `debug`, `info`, `warn`, `error`) | `--log-level error`        |
 | `--extra-args`        | Additional arguments passed directly to Terragrunt              | `--extra-args -lock=false`      |
 
+Without arguments you'll get walked thru a wizard.
+
+![Wizard](../../docs/python_wizard.png)
+
 ## About
 
 All paths referenced below have `terragrunt.hcl` or `run-all` ability multi-module with dependencies.
 Makes use of SSM Parameter Store for credential pools, network or other parameters, or `common.hcl` for sharing across multi-module.
 
-This script just removes the need to change directory (`cd`) into these locations as this could accomodate multi-account/multi-environment in AWS.
+This script just removes the need to change directory (`cd`) into these locations as this could accommodate multi-account/multi-environment in AWS.
 
 ## Dealing with AWS Account(s)
 
@@ -38,7 +42,7 @@ or fallback to;
 - `terraform/environments/nonprod/account_id.txt`
 - `terraform/environments/prod/account_id.txt`
 
-Will check if you have defaults and use that.
+Will check if you have defaults and use that. (~/.aws/credentials)
 Evaluates your ~/.aws/config to match account to profile.
 
 ## SQS Lambda Demo
