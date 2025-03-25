@@ -19,6 +19,13 @@ Quick way to access terraform/terragrunt commands without needing to `cd` into d
 | `--log-level`         | Terragrunt log verbosity (`trace`, `debug`, `info`, `warn`, `error`) | `--log-level error`        |
 | `--extra-args`        | Additional arguments passed directly to Terragrunt              | `--extra-args -lock=false`      |
 
+## About
+
+All paths referenced below have `terragrunt.hcl` or `run-all` ability multi-module with dependencies.
+Makes use of SSM Parameter Store for credential pools, network or other parameters, or `common.hcl` for sharing across multi-module.
+
+This script just removes the need to change directory (`cd`) into these locations as this could accomodate multi-account/multi-environment in AWS.
+
 ## SQS Lambda Demo
 
 Sample Long running task:  REST endpoint for adding a task.  A Runner picks it up out of SQS processes it.
@@ -96,13 +103,15 @@ Group 2
 
 ### RDS
 
+AWS Aurora Serverless V2
+
 ```shell
 python terraform/scripts/tg.py -a nonprod -e shared -f rds -c plan --run-all
 ```
 
 ### AWS CodeBuild Github Runner
 
-AWS now allows you to run a CodeBuild runner to execute Github Actions in AWS.  Works via webhook back to your Github
+AWS now allows you to run a **CodeBuild** runner to **execute Github Actions** in AWS.  Works via webhook back to your Github
 
 ```shell
 python terraform/scripts/tg.py -a nonprod -e shared -f codebuild-github-runner -c plan --run-all
@@ -110,8 +119,17 @@ python terraform/scripts/tg.py -a nonprod -e shared -f codebuild-github-runner -
 
 ### AWS Codebuild Gitlab Runner
 
-AWS now allows you to run a CodeBuild runner to execute Github Actions in AWS.  Works via webhook back to your Gitlab.
+AWS now allows you to run a **CodeBuild** runner to **execute Gitlab-CI** in AWS.  Works via webhook back to your Gitlab.
 
 ```shell
 python terraform/scripts/tg.py -a nonprod -e shared -f codebuild-gitlab-runner -c plan --run-all
+```
+
+### Gitlab CI Runner (EKS)
+
+
+This module provisions a GitLab CI Runner that runs on **EKS** (Elastic Kubernetes Service), using a **bastion EC2 instance** to initiate builds and manage lifecycle operations from within the VPC.
+
+```shell
+python terraform/scripts/tg.py -a nonprod -e shared -f gitlab-ci -c plan --run-all
 ```
