@@ -26,6 +26,21 @@ Makes use of SSM Parameter Store for credential pools, network or other paramete
 
 This script just removes the need to change directory (`cd`) into these locations as this could accomodate multi-account/multi-environment in AWS.
 
+## Dealing with AWS Account(s)
+
+Util methods added to support for account id lookup:
+
+- `terraform/environments/nonprod-12345678910/`
+- `terraform/environments/prod-12345678911/`
+
+or fallback to;
+
+- `terraform/environments/nonprod/account_id.txt`
+- `terraform/environments/prod/account_id.txt`
+
+Will check if you have defaults and use that.
+Evaluates your ~/.aws/config to match account to profile.
+
 ## SQS Lambda Demo
 
 Sample Long running task:  REST endpoint for adding a task.  A Runner picks it up out of SQS processes it.

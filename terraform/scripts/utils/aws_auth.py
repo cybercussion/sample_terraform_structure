@@ -4,41 +4,29 @@ import sys
 from pathlib import Path
 from utils.aws_profile import find_profile_by_account
 
-def can_use_default_aws_profile():
-    try:
-      subprocess.run(
-        ["aws", "sts", "get-caller-identity"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=True
-      )
-      return True
-    except subprocess.CalledProcessError:
+def can_use_default_aws_profile(account_id: str) -> bool:
+  try:
+    result = subprocess.run(
+      ["aws", "sts", "get-caller-identity", "--output", "json"],
+      check=True,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.DEVNULL,
+      text=True
+    )
+    import json
+    identity = json.loads(result.stdout)
+    return identity.get("Account") == account_id
+  except Exception:
       return False
 
 def ensure_aws_profile(account_folder: str):
-  """
-  Ensures AWS_PROFILE is set based on:
-  1. Existing environment
-  2. Valid default profile
-  3. Extracted or looked-up account ID
-
-  Skipped entirely if CI=true.
-  """
-
   if os.getenv("CI", "").lower() == "true":
-    return  # Skip entirely in CI
-
-  if os.getenv("AWS_PROFILE"):
-    return  # Already set
-
-  if can_use_default_aws_profile():
-    print("✅ AWS CLI appears to work with your default credentials.")
     return
 
-  print("🔍 AWS_PROFILE not set and default credentials failed. Attempting to find a profile...")
+  if os.getenv("AWS_PROFILE"):
+    return
 
-  # Extract account ID from folder name (e.g., nonprod-123456789012)
+  # Step 1: Try to extract an account_id
   account_id = None
   parts = account_folder.split("-")
   for part in parts:
@@ -46,18 +34,23 @@ def ensure_aws_profile(account_folder: str):
       account_id = part
       break
 
-  # Fallback: Check for account_id.txt in environments/<account>
-  if not account_id:
-    account_id_file = Path(__file__).resolve().parent.parent.parent / "environments" / account_folder / "account_id.txt"
-    if account_id_file.exists():
-      account_id = account_id_file.read_text().strip()
-      print(f"📄 Found account ID from account_id.txt: {account_id}")
+  account_id_file = Path(__file__).resolve().parent.parent.parent / "environments" / account_folder / "account_id.txt"
+  if not account_id and account_id_file.exists():
+    account_id = account_id_file.read_text().strip()
+    print(f"📄 Found account ID from account_id.txt: {account_id}")
 
+  # Step 2: If no account ID, just try using default creds and hope for the best
   if not account_id:
-    print("❌ Could not determine account ID from folder name or account_id.txt.")
-    sys.exit(1)
+    print("⚠️  No account ID found. Using default AWS credentials (hope they're valid).")
+    return
 
-  # Lookup and set AWS_PROFILE
+  # Step 3: Check if default creds match the expected account
+  if can_use_default_aws_profile(account_id):
+    print("✅ Default AWS credentials are valid for this account.")
+    return
+
+  # Step 4: Try to find a matching profile
+  print("🔍 Default credentials failed. Attempting to find a matching profile...")
   try:
     profile = find_profile_by_account(account_id)
     os.environ["AWS_PROFILE"] = profile
