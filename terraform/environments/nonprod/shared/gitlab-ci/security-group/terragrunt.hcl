@@ -6,10 +6,11 @@ include {
 # Load common configuration
 locals {
   common = read_terragrunt_config(find_in_parent_folders("common.hcl")).locals
+  base_module_path = "${find_in_parent_folders("root.hcl")}/../modules"
 }
 
 terraform {
-  source = "../../../../../modules/security_group"  # Path to your security_group module
+  source = "${local.base_module_path}/security_group"  # Path to your security_group module
 }
 
 inputs = {

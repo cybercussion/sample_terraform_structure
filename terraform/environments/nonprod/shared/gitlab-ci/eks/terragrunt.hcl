@@ -6,6 +6,11 @@ include {
 # Load common configuration
 locals {
   common = read_terragrunt_config(find_in_parent_folders("common.hcl")).locals
+  base_module_path = "${find_in_parent_folders("root.hcl")}/../modules"
+}
+
+terraform {
+  source = "${local.base_module_path}/eks"
 }
 
 # Dependency for the pod role
@@ -45,11 +50,6 @@ dependency "security_group" {
     security_group_id = "sg-12345678"  # Mock security group ID
     security_group_arn = "arn:aws:ec2:us-west-2:123456789012:security-group/sg-12345678"  # Mock security group ARN
   }
-}
-
-# Terragrunt module configuration for the EKS cluster
-terraform {
-  source = "../../../../../modules/eks"
 }
 
 inputs = {

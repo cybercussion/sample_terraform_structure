@@ -3,12 +3,13 @@ include {
   path = find_in_parent_folders("root.hcl")
 }
 
-terraform {
-  source = "../../../../../modules/iam_role"
-}
-
 locals {
   common = read_terragrunt_config(find_in_parent_folders("common.hcl")).locals
+  base_module_path = "${find_in_parent_folders("root.hcl")}/../modules"
+}
+
+terraform {
+  source = "${local.base_module_path}/iam_role"
 }
 
 inputs = {

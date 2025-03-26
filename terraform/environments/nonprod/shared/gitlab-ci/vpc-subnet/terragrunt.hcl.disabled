@@ -6,11 +6,12 @@ include {
 # Load common configuration
 locals {
   common = read_terragrunt_config(find_in_parent_folders("common.hcl")).locals
+  base_module_path = "${find_in_parent_folders("root.hcl")}/../modules"
 }
 
 # Terragrunt module configuration for VPC and subnets
 terraform {
-  source = "../../../../../modules/vpc_subnet"
+  source = "${local.base_module_path}/vpc_subnet"
 }
 
 inputs = {

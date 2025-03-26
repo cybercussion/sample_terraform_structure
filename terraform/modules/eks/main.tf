@@ -64,7 +64,7 @@ module "eks" {
       from_port   = 0
       to_port     = 0
       protocol    = "-1"
-      cidr_blocks = [data.aws_ssm_parameter.vpc_id.value] # Restrict to your actual VPC CIDR
+      cidr_blocks = ["172.16.0.0/16"] # Restrict to your actual VPC CIDR (move to ssm?)
     }
   }
 

@@ -5,6 +5,11 @@ include {
 # Load common configuration
 locals {
   common = read_terragrunt_config(find_in_parent_folders("common.hcl")).locals
+  base_module_path = "${find_in_parent_folders("root.hcl")}/../modules"
+}
+
+terraform {
+  source = "${local.base_module_path}/gitlab-runner"
 }
 
 # Dependency on the EKS module
@@ -37,10 +42,6 @@ dependency "pod_role" {
     role_arn  = "arn:aws:iam::123456789012:role/mock-pod-role"
     role_name = "mock-pod-role"
   }
-}
-
-terraform {
-  source = "../../../../../modules/gitlab-runner"
 }
 
 inputs = {
